@@ -16,6 +16,7 @@ const loadApplication = async () => {
 
 export default function App() {
   const [iasReady, setIasReady] = useState(false);
+  const routing = useRoute(false);
   if (!iasReady) {
     return (
       <AppLoading
