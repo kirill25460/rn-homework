@@ -8,15 +8,15 @@ const AuthStack = createStackNavigator();
 
 const MainTab = createBottomTabNavigator();
 
-import PostsScreen from "./src/screens/mainScreen/PostsScreen";
+import PostsScreen from "./Screens/mainScreen/PostScreen";
 
-import CreateScreen from "./src/screens/mainScreen/CreatePostsScreen";
+import CreateScreen from "./Screens/mainScreen/CreatePostsScreen";
 
-import ProfileScreen from "./src/screens/mainScreen/ProfileScreen";
+import ProfileScreen from "./Screens/mainScreen/ProfileScreen";
 
-import LoginScreen from "./src/screens/auth/LoginScreen";
+import LoginScreen from "./Screens/auth/LoginScreen";
 
-import RegisterScreen from "./src/screens/auth/RegistrationScreen";
+import RegisterScreen from "./Screens/auth/RegistartionScreen";
 
 // icons import
 

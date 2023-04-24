@@ -15,12 +15,12 @@ const loadApplication = async () => {
 };
 
 export default function App() {
-  const [isReady, setIsReady] = useState(false);
-  if (!isReady) {
+  const [iasReady, setIasReady] = useState(false);
+  if (!iasReady) {
     return (
       <AppLoading
         startAsync={loadApplication}
-        onFinish={() => setIsReady(true)}
+        onFinish={() => setIasReady(true)}
         onError={console.warn}
       />
     );

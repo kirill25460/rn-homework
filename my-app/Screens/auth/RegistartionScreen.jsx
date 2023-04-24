@@ -10,20 +10,15 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   TouchableWithoutFeedback,
-   Dimensions,
+  Dimensions,
 } from "react-native";
-
-
 const initialState = {
   email: "",
   password: "",
+  nickname: "",
 };
 
-
-
-export default function LoginScreen({ navigation }) {
-  console.log(Platform.OS);
-
+export default function RegistrationScreen({navigation}) {
   const [isShowKeyboard, setIsShowKeyboard] = useState(false);
   const [state, setstate] = useState(initialState);
 
@@ -48,13 +43,12 @@ export default function LoginScreen({ navigation }) {
     console.log(state);
     setstate(initialState);
   };
- 
   return (
     <TouchableWithoutFeedback onPress={keyboardHide}>
       <View style={styles.container}>
         <ImageBackground
           style={styles.image}
-          source={require("../assets/photoBG.png")}
+          source={require("../../assets/images/photoBG.png")}
         >
           <KeyboardAvoidingView
             // behavior={Platform.OS == "ios" ? "padding" : "height"}
@@ -67,11 +61,22 @@ export default function LoginScreen({ navigation }) {
               }}
             >
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>Войти</Text>
+                <Text style={styles.headerTitle}>Регистрация</Text>
               </View>
               <View>
 
                 <TextInput
+                  style={styles.input}
+                  onFocus={() => setIsShowKeyboard(true)}
+                  value={state.email}
+                  placeholder="Логин"
+                  onChangeText={(value) =>
+                    setstate((prevState) => ({ ...prevState, nickname: value }))
+                  }
+                />
+              </View>
+              <View style={{ marginTop: 20 }}>
+              <TextInput
                   style={styles.input}
                   onFocus={() => setIsShowKeyboard(true)}
                   value={state.email}
@@ -82,8 +87,7 @@ export default function LoginScreen({ navigation }) {
                 />
               </View>
               <View style={{ marginTop: 20 }}>
-
-                <TextInput
+              <TextInput
                   style={styles.input}
                   color='#BDBDBD'
                   secureTextEntry={true}
@@ -100,14 +104,14 @@ export default function LoginScreen({ navigation }) {
                 style={styles.btn}
                 onPress={keyboardHide}
               >
-                <Text style={styles.btnTitle}>Войти</Text>
+                <Text style={styles.btnTitle}>Зарегистрироваться</Text>
               </TouchableOpacity>
               <View style={styles.authFooter}>
-                  <Text style={styles.switchText}>Нет аккаунта?</Text>
+                  <Text style={styles.switchText}>Уже есть аккаунт?</Text>
                   <TouchableOpacity
-                    onPress={() => navigation.navigate("Register")}
+                    onPress={() => navigation.navigate("Login")}
                   >
-                    <Text style={styles.switchLink}>Зарегистрироваться</Text>
+                    <Text style={styles.switchLink}>Войти</Text>
                   </TouchableOpacity>
               </View>
             </View>
@@ -118,42 +122,40 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#fff",
-    },
-    image: {
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  image: {
     flex: 1,
     resizeMode: "cover",
-    justifyContent: "flex-end",  // justifyContent: "center",
+    justifyContent: "flex-end",
+    // justifyContent: "center",
     alignItems: "center",
-    },
-  
-    input: {
+  },
+  input: {
     borderWidth: 1,
     borderColor: "#e8e8e8",
     height: 50,
     borderRadius: 8,
     backgroundColor: '#f6f6f6',
+
     padding: 15,
     marginBottom: 16,
+
     color: "#212121",
-    },
-  
-    form: {
+  },
+  form: {
     marginHorizontal: 40,
-    },
-  
-    inputTitle: {
+  },
+  inputTitle: {
     color: "#f0f8ff",
     marginBottom: 10,
     fontSize: 18,
     fontFamily: "Roboto-Medium",
-    },
-  
-    btn: {
+  },
+  btn: {
     marginTop: 43,
     marginBottom: 16,
     alignItems: "center",
@@ -161,42 +163,37 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: "#FF6C00",
     borderRadius: 100,
-    },
-  
-    btnTitle: {
+  },
+  btnTitle: {
     color: Platform.OS === "ios" ? "#4169e1" : "#f0f8ff",
     fontSize: 16,
     fontFamily: "Roboto-Regular",
-    },
-  
-    header: {
+  },
+  header: {
     alignItems: "center",
     marginBottom: 33,
-    },
-  
-    headerTitle: {
+  },
+  headerTitle: {
     fontSize: 30,
     color: "#f0f8ff",
     fontFamily: "Roboto-Medium",
-    },
-  
-    authFooter: {
+  },
+  authFooter: {
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
-    },
-    switchText: {
+  },
+   switchText: {
     fontFamily: "Roboto-Regular",
     fontSize: 16,
     lineHeight: 19,
     color:'#1b4371'
-    },
-    switchLink: {
-      fontFamily: "Roboto-Regular",
-      fontSize: 16,
-      lineHeight: 19,
-      color: "#1B4371",
-      textDecorationLine: "underline",
-    },
-  
-  });
+  },
+  switchLink: {
+    fontFamily: "Roboto-Regular",
+    fontSize: 16,
+    lineHeight: 19,
+    color: "#1B4371",
+    textDecorationLine: "underline",
+  },
+});
