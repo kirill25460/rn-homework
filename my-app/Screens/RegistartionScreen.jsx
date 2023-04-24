@@ -18,7 +18,7 @@ const initialState = {
   nickname: "",
 };
 
-export default function RegistrationScreen() {
+export default function RegistrationScreen({navigation}) {
   const [isShowKeyboard, setIsShowKeyboard] = useState(false);
   const [state, setstate] = useState(initialState);
 
@@ -107,7 +107,12 @@ export default function RegistrationScreen() {
                 <Text style={styles.btnTitle}>Зарегистрироваться</Text>
               </TouchableOpacity>
               <View style={styles.authFooter}>
-                  <Text style={styles.switchText}>Уже есть аккаунт? Войти</Text>
+                  <Text style={styles.switchText}>Уже есть аккаунт?</Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("Login")}
+                  >
+                    <Text style={styles.switchLink}>Войти</Text>
+                  </TouchableOpacity>
               </View>
             </View>
           </KeyboardAvoidingView>
@@ -183,5 +188,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 19,
     color:'#1b4371'
+  },
+  switchLink: {
+    fontFamily: "Roboto-Regular",
+    fontSize: 16,
+    lineHeight: 19,
+    color: "#1B4371",
+    textDecorationLine: "underline",
   },
 });

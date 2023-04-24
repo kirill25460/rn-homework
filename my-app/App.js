@@ -3,8 +3,9 @@ import {} from "react-native";
 import * as Font from "expo-font";
 import AppLoading from 'expo-app-loading';
 
-import LoginScreen from './Screens/LoginScreen';
-import RegistrationScreen from './Screens/RegistartionScreen';
+import { NavigationContainer } from "@react-navigation/native";
+
+import { useRoute } from "./router";
 
 const loadApplication = async () => {
   await Font.loadAsync({
@@ -25,10 +26,5 @@ export default function App() {
     );
   }
 
-  return (
-    <>
-    <LoginScreen />
-    {/* { <RegistrationScreen /> } */}
-    </>
- );
+  return <NavigationContainer>{routing}</NavigationContainer>;
 }
