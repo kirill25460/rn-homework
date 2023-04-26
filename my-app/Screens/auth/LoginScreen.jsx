@@ -1,123 +1,147 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import {
+  ImageBackground,
   StyleSheet,
   Text,
   View,
-  ImageBackground,
   TextInput,
+  Button,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
   Keyboard,
   TouchableWithoutFeedback,
-   Dimensions,
+  Dimensions,
 } from "react-native";
-import { useDispatch } from "react-redux";
+
 import { authSignInUser } from "../../redux/auth/authOperations";
 
+//stateSchema
 const initialState = {
   email: "",
   password: "",
 };
 
-
+//images
+const imageBG = require("../../assets/images/photoBG.png");
 
 export default function LoginScreen({ navigation }) {
-  console.log(Platform.OS);
-
-  const [isShowKeyboard, setIsShowKeyboard] = useState(false);
-  const [state, setstate] = useState(initialState);
   const dispatch = useDispatch();
+  const [showPass, setShowPass] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [state, setState] = useState(initialState);
   const [dimensions, setdimensions] = useState(
-    Dimensions.get("window").width - 16 * 2
+    Dimensions.get("window").width - 20 * 2
   );
 
   useEffect(() => {
     const onChange = () => {
-      const width = Dimensions.get("window").width - 16 * 2;
-
+      const width = Dimensions.get("window").width - 20 * 2;
       setdimensions(width);
     };
-    Dimensions.addEventListener("change", onChange);
+    const dimensionsHandler = Dimensions.addEventListener("change", onChange);
+
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true); // or some other action
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false); // or some other action
+      }
+    );
+
     return () => {
-      Dimensions.removeEventListener("change", onChange);
+      dimensionsHandler.remove();
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
     };
   }, []);
 
-  const handleSubmit = () => {
-    console.log("click");
-    setIsShowKeyboard(false);
-    Keyboard.dismiss();
+  const submitForm = async () => {
+    keyboardHide();
     dispatch(authSignInUser(state));
-    setstate(initialState);
   };
 
   const keyboardHide = () => {
+    setKeyboardVisible(false);
     Keyboard.dismiss();
-    setIsShowKeyboard(false);
   };
- 
+
+  const toglePass = () => {
+    setShowPass(!showPass);
+  };
+
   return (
     <TouchableWithoutFeedback onPress={keyboardHide}>
       <View style={styles.container}>
-        <ImageBackground
-          style={styles.image}
-          source={require("../../assets/images/photoBG.png")}
-        >
+        <ImageBackground source={imageBG} style={styles.image}>
           <KeyboardAvoidingView
-            // behavior={Platform.OS == "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : ""}
           >
             <View
               style={{
                 ...styles.form,
-                marginBottom: isShowKeyboard ? 30 : 110,
-                width: dimensions,
+                paddingBottom: isKeyboardVisible ? 32 : 146,
+                width: dimensions + 20 * 2,
               }}
             >
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>Войти</Text>
               </View>
-              <View>
 
+              <View style={{ marginBottom: 16 }}>
                 <TextInput
-                  style={styles.input}
-                  onFocus={() => setIsShowKeyboard(true)}
-                  value={state.email}
                   placeholder="Адрес электронной почты"
+                  value={state.email}
+                  style={styles.input}
+                  textAlign={"left"}
+                  onFocus={() => setKeyboardVisible(true)}
                   onChangeText={(value) =>
-                    setstate((prevState) => ({ ...prevState, email: value }))
+                    setState((prevState) => ({ ...prevState, email: value }))
                   }
                 />
               </View>
-              <View style={{ marginTop: 20 }}>
-
+              <View style={styles.passThmb}>
+                <View style={styles.showPassThmb}>
+                  <TouchableOpacity activeOpacity={0.6} onPress={toglePass}>
+                    <Text style={styles.showPass}>
+                      {!showPass ? "Показать" : "Скрыть"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 <TextInput
-                  style={styles.input}
-                  color='#BDBDBD'
-                  secureTextEntry={true}
-                  onFocus={() => setIsShowKeyboard(true)}
+                  placeholder="Пароль"
                   value={state.password}
-                  placeholder="Введите свой пароль"
+                  style={styles.input}
+                  textAlign={"left"}
+                  secureTextEntry={!showPass ? true : false}
+                  onFocus={() => setKeyboardVisible(true)}
                   onChangeText={(value) =>
-                    setstate((prevState) => ({ ...prevState, password: value }))
+                    setState((prevState) => ({ ...prevState, password: value }))
                   }
                 />
               </View>
               <TouchableOpacity
-                activeOpacity={0.8}
+                activeOpacity={0.6}
                 style={styles.btn}
-                onPress={handleSubmit}
+                onPress={() => submitForm()}
               >
                 <Text style={styles.btnTitle}>Войти</Text>
               </TouchableOpacity>
-              <View style={styles.authFooter}>
-                  <Text style={styles.switchText}>Нет аккаунта?</Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate("Register")}
-                  >
-                    <Text style={styles.switchLink}>Зарегистрироваться</Text>
-                  </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                activeOpacity={0.6}
+                onPress={() => navigation.navigate({ name: "Registration" })}
+              >
+                <Text style={styles.regTitle}>
+                  Нет аккаунта? Зарегистрироваться
+                </Text>
+              </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
         </ImageBackground>
@@ -126,85 +150,108 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-
+//styles
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#fff",
-    },
-    image: {
+  container: {
+    flex: 1,
+  },
+  image: {
     flex: 1,
     resizeMode: "cover",
-    justifyContent: "flex-end",  // justifyContent: "center",
+    justifyContent: "flex-end",
     alignItems: "center",
-    },
-  
-    input: {
-    borderWidth: 1,
-    borderColor: "#e8e8e8",
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#f6f6f6',
-    padding: 15,
-    marginBottom: 16,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  headerTitle: {
+    fontSize: 36,
+    fontWeight: "500",
     color: "#212121",
-    },
-  
-    form: {
-    marginHorizontal: 40,
-    },
-  
-    inputTitle: {
-    color: "#f0f8ff",
-    marginBottom: 10,
-    fontSize: 18,
-    fontFamily: "Roboto-Medium",
-    },
-  
-    btn: {
-    marginTop: 43,
-    marginBottom: 16,
-    alignItems: "center",
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: "#FF6C00",
-    borderRadius: 100,
-    },
-  
-    btnTitle: {
-    color: Platform.OS === "ios" ? "#4169e1" : "#f0f8ff",
+    fontFamily: "Roboto-Regular",
+  },
+  form: {
+    paddingTop: 32,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+  },
+  input: {
+    height: 50,
+    padding: 12,
+    borderRadius: 5,
+    borderWidth: 1,
     fontSize: 16,
+    lineHeight: 0.8,
     fontFamily: "Roboto-Regular",
-    },
-  
-    header: {
-    alignItems: "center",
-    marginBottom: 33,
-    },
-  
-    headerTitle: {
-    fontSize: 30,
-    color: "#f0f8ff",
-    fontFamily: "Roboto-Medium",
-    },
-  
-    authFooter: {
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    },
-    switchText: {
-    fontFamily: "Roboto-Regular",
+    backgroundColor: "#F6F6F6",
+    borderColor: "#E8E8E8",
+    color: "#212121",
+  },
+  passThmb: {
+    marginBottom: 43,
+    position: "relative",
+  },
+  showPassThmb: {
+    position: "absolute",
+    top: 14,
+    right: 16,
+
+    zIndex: 99,
+  },
+  showPass: {
     fontSize: 16,
     lineHeight: 19,
-    color:'#1b4371'
-    },
-    switchLink: {
-      fontFamily: "Roboto-Regular",
-      fontSize: 16,
-      lineHeight: 19,
-      color: "#1B4371",
-      textDecorationLine: "underline",
-    },
-  
-  });
+    fontFamily: "Roboto-Regular",
+    color: "#1B4371",
+  },
+  btn: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    paddingTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 100,
+    borderWidth: 1,
+    fontFamily: "Roboto-Regular",
+    ...Platform.select({
+      ios: {
+        borderColor: "#FF6C00",
+        backgroundColor: "transparent",
+      },
+      android: {
+        borderColor: "transparent",
+        backgroundColor: "#FF6C00",
+      },
+      default: {
+        borderColor: "transparent",
+        backgroundColor: "#FF6C00",
+      },
+    }),
+  },
+  btnTitle: {
+    fontSize: 16,
+    lineHeight: 19,
+    fontFamily: "Roboto-Regular",
+    ...Platform.select({
+      ios: {
+        color: "#1B4371",
+      },
+      android: {
+        color: "#FFFFFF",
+      },
+      default: {
+        color: "#FFFFFF",
+      },
+    }),
+  },
+  regTitle: {
+    fontSize: 16,
+    lineHeight: 19,
+    fontFamily: "Roboto-Regular",
+    textAlign: "center",
+    color: "#1B4371",
+  },
+});

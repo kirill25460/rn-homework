@@ -1,84 +1,63 @@
-import React, { useState, useCallback } from "react";
-
-import { View } from "react-native";
-
-import { useFonts } from "expo-font";
+import { useState, useEffect, useLayoutEffect } from "react";
+import { NavigationContainer } from "@react-navigation/native"; 
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { store } from "./redux/store";
+import { Context } from "./context";
+import { authStateChangeUsers } from "./redux/auth/authOperations";
 
 import * as SplashScreen from "expo-splash-screen";
+import * as Font from "expo-font";
 
-import { AppLoading } from "expo";
-
-import { Provider } from "react-redux";
-
-import { NavigationContainer } from "@react-navigation/native";
-
-import { useRoute } from "./router";
-
-import { store } from "./redux/store";
-
-import { onAuthStateChanged } from "firebase/auth";
-
-import { auth } from "./firebase/config";
-
-// const loadApplication = async () => {
-
-//   await Font.loadAsync({
-
-//     "Roboto-Medium": require("./assets/fonts/Roboto-Medium.ttf"),
-
-//     "Roboto-Regular": require("./assets/fonts/Roboto-Regular.ttf"),
-
-//   });
-
-// };
+import useRoute from "./router";
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [iasReady, setIasReady] = useState(false);
+  const [currentPath, setCurrentPath] = useState(null);
+  const [fontIsLoaded, setFontIsLoaded] = useState(false);
+  const routing = useRoute(false);
 
-  const [user, setUser] = useState(null);
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await SplashScreen.preventAutoHideAsync();
 
-  const [fontsLoaded] = useFonts({
-    "Roboto-Medium": require("./assets/fonts/Roboto-Medium.ttf"),
+        await Font.loadAsync({
+          "Roboto-Regular": require("./assets/fonts/Roboto-Regular.ttf"),
+          "Roboto-Bold": require("./assets/fonts/Roboto-Bold.ttf"),
+        });
 
-    "Roboto-Regular": require("./assets/fonts/Roboto-Regular.ttf"),
-  });
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setFontIsLoaded(true);
+      }
     }
-  }, [fontsLoaded]);
+    prepare();
+  }, []);
 
-  if (!fontsLoaded) {
+  if (!fontIsLoaded) {
     return null;
   }
 
-  onAuthStateChanged(auth, (user) => setUser(user));
-
-  const routing = useRoute(false);
-
-  // const routing = useRoute(user);
-
-  if (!iasReady) {
-    // return (
-    //   <AppLoading
-    //     startAsync={loadApplication}
-    //     onFinish={() => setIasReady(true)}
-    //     onError={console.warn}
-    //   />
-    // );
-  }
-
   return (
-    <View
-      style={{
-        flex: 1,
-      }}
-      onLayout={onLayoutRootView}
-    >
-      <Provider store={store}>
-        <NavigationContainer>{routing}</NavigationContainer>
-      </Provider>
-    </View>
+    <Provider store={store}>
+      <Context.Provider value={{ setCurrentPath, currentPath }}>
+        <RouteSwitcher />
+      </Context.Provider>
+    </Provider>
   );
+}
+
+function RouteSwitcher() {
+  const { stateChange } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(authStateChangeUsers());
+  }, [stateChange]);
+
+  const routing = useRoute(stateChange);
+
+  return <NavigationContainer>{routing}</NavigationContainer>;
 }
