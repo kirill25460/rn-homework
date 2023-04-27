@@ -1,12 +1,12 @@
 import { createStackNavigator } from "@react-navigation/stack";
-// import {
-//   DefaultPostsScreen,
-//   MapScreen,
-//   CommentsScreen,
-// } from "../nestedScreens";
-import {DefaultPostsScreen} from "../nestedScreens/DefaultPostsScreen";
-import {MapScreen} from "../nestedScreens/MapScreen";
-import { CommentsScreen } from "../nestedScreens/CommentsScreen";
+// import DefaultPostsScreen from "../nestedScreens/DefaultPostsScreen";
+// import MapScreen from "../nestedScreens/MapScreen";
+// import  CommentsScreen  from "../nestedScreens/CommentsScreen";
+import {
+  DefaultPostsScreen,
+  MapScreen,
+  CommentsScreen,
+} from "../nestedScreens";
 import { TouchableOpacity, Image } from "react-native";
 import { useContext } from "react";
 import { Context } from "../../context";

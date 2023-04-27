@@ -6,8 +6,8 @@ import { createStackNavigator } from "@react-navigation/stack";
 // import { Button, TouchableOpacity, Image } from "react-native";
 
 import Home from "./Screens/Home";
-import { LoginScreen } from "./Screens/auth/LoginScreen";
-import {  RegistrationScreen } from "./Screens/auth/RegistartionScreen";
+import  LoginScreen  from "./Screens/auth/LoginScreen";
+import   RegistrationScreen  from "./Screens/auth/RegistartionScreen";
 
 
 const AuthStack = createStackNavigator();

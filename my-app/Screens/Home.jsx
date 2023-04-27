@@ -9,10 +9,11 @@ import { useDispatch } from "react-redux";
 import { authSignOutUser } from "../redux/auth/authOperations";
 
 //screens
-import CreateScreen from "../Screens/mainScreen/CreatePostsScreen";
-import PostsScreen from "../Screens/mainScreen/PostScreen";
-import ProfileScreen from "../Screens/mainScreen/ProfileScreen";
-
+// import {CreateScreen} from "../Screens/mainScreen/CreatePostsScreen";
+// import {PostsScreen} from "../Screens/mainScreen/PostScreen";
+// import {ProfileScreen} from "../Screens/mainScreen/ProfileScreen";
+import screens from "../Screens";
+const {CreateScreen,PostsScreen, ProfileScreen} = screens;
 
 //icons
 

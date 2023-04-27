@@ -1,5 +1,5 @@
-import { LoginScreen, RegistrationScreen } from "./authScreens";
-import { CreateScreen, PostsScreen, ProfileScreen } from "./mainScreens";
+import { LoginScreen, RegistrationScreen } from "./auth";
+import { CreateScreen, PostsScreen, ProfileScreen } from "./mainScreen";
 import { CommentsScreen, MapScreen, DefaultPostsScreen } from "./nestedScreens";
 
 const screens = {
