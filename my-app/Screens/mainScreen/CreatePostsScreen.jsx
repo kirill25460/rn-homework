@@ -1,312 +1,566 @@
+import { useState, useEffect } from "react";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { collection, addDoc } from "firebase/firestore";
+import { fsbase } from "../../firebase/config";
 import {
-  StyleSheet,
-  View,
+  MaterialIcons,
+  Foundation,
+  FontAwesome,
+  Ionicons,
+} from "@expo/vector-icons";
+import { useSelector } from "react-redux";
+import { Camera, CameraType, FlashMode } from "expo-camera";
+import { useIsFocused } from "@react-navigation/native";
+import * as Location from "expo-location";
+// import Spinner from "react-native-loading-spinner-overlay";
+import {
   Text,
-  TextInput,
-  Image,
-  Pressable,
-  TouchableOpacity,
-  Platform,
+  View,
+  StyleSheet,
+  TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  Dimensions,
+  TouchableOpacity,
+  TextInput,
+  Keyboard,
+  Platform,
+  Button,
   ScrollView,
-} from 'react-native';
-import React, { useState, useEffect } from 'react';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Camera, CameraType } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
-import * as Location from 'expo-location';
-import { storage, db } from '../firebase/config';
-import { v4 } from 'uuid';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { addDoc, collection } from 'firebase/firestore';
-import { useSelector } from 'react-redux';
-import { selectID, selectName } from '../redux/auth/selectors';
-import { useIsFocused } from '@react-navigation/native';
+  ImageBackground,
+} from "react-native";
+import "react-native-get-random-values";
+import { v4 as uuidv4 } from "uuid";
 
-const CreatePostsScreen = ({ navigation }) => {
-  const [imageSignature, setImageSignature] = useState('');
-  const [imageLocation, setImageLocation] = useState('');
-  const [hasPermission, setHasPermission] = useState(null);
-  const [cameraRef, setCameraRef] = useState(null);
-  const [type, setType] = useState(Camera.Constants.Type.back);
+
+
+//stateSchema
+const initialState = {
+  title: "",
+  location: null,
+  region: {},
+};
+
+export default function CreateScreen({ navigation }) {
+  const { userId, login, avatarImage } = useSelector((state) => state.auth);
+  //location
+  const [location, setLocation] = useState("denied");
+
+  //camera
+  const [permission, requestPermission] = Camera.useCameraPermissions();
+  const [camera, setCamera] = useState(null);
   const [photo, setPhoto] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const uid = useSelector(selectID);
-  const name = useSelector(selectName);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const isFocused = useIsFocused();
+  const [cameraType, setCameraType] = useState(CameraType.back);
+  const [flashMode, setFlashMode] = useState(FlashMode.off);
 
-  console.log('CreatePostsScreen');
+  //other
+  const [loading, setLoading] = useState(false);
+  const [loadingText, setloadingText] = useState("Taking photo...");
+  const [post, setPost] = useState(initialState);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [dimensions, setdimensions] = useState(
+    Dimensions.get("window").width - 16 * 2
+  );
+
+  const redyToPost = photo && post.title;
+  const redyToDell = photo || post.title;
 
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      await MediaLibrary.requestPermissionsAsync();
-
-      setHasPermission(status === 'granted');
-    })();
-    (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        setLocation({
-          coords: {
-            latitude: 50.011206,
-            longitude: 36.241585,
-          },
-        });
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
+      setLocation(status);
+      // if (status !== "granted") {
+      //   setErrorMsg("Permission to access location was denied");
+      //   return;
+      // }
     })();
-  }, []);
+    requestPermission;
+    const onChangeDimension = () => {
+      const width = Dimensions.get("window").width - 20 * 2;
+      setdimensions(width);
+    };
 
-  const imageTitleHandler = text => {
-    setImageSignature(text);
-  };
-
-  const imageLocationHandler = text => {
-    setImageLocation(text);
-  };
-
-  const imageDownloaderHandler = () => {
-    // uploadPhotoToStorage();
-    console.log('upload');
-  };
-  const onSubmit = async () => {
-    await uploadPostToStorage();
-    setImageSignature('');
-    setImageLocation('');
-    setPhoto(null);
-    navigation.navigate('Публікації');
-  };
-
-  const flipCamera = () => {
-    setType(current =>
-      current === CameraType.back ? CameraType.front : CameraType.back
+    const dimensionsHandler = Dimensions.addEventListener(
+      "change",
+      onChangeDimension
     );
-  };
 
-  const takePhoto = async () => {
-    if (cameraRef) {
-      const photo = await cameraRef.takePictureAsync();
-      setPhoto(photo.uri);
-    }
-  };
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
 
-  const uploadPhotoToStorage = async () => {
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      dimensionsHandler.remove();
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, [photo, loading, post, cameraType]);
+
+  const uploadPhotoToServer = async () => {
+    const storage = getStorage();
+    const uniquePostId = uuidv4();
+    const storageRef = ref(storage, `photos/${uniquePostId}`);
+
     const response = await fetch(photo);
     const file = await response.blob();
 
-    const imageId = v4();
-    const storageRef = ref(storage, `postImage/${imageId}`);
+    await uploadBytes(storageRef, file).then(() => {});
 
-    await uploadBytes(storageRef, file).then(snapshot => {
-      console.log('Uploaded a blob or file!');
-    });
-    const storageUrlPhoto = await getDownloadURL(
-      ref(storage, `postImage/${imageId}`)
-    );
-    return storageUrlPhoto;
+    const processedPhoto = await getDownloadURL(
+      ref(storage, `photos/${uniquePostId}`)
+    )
+      .then((url) => {
+        return url;
+      })
+      .catch((error) => {
+        console.log(`error.processedPhoto`, error);
+      });
+    return processedPhoto;
   };
 
-  const uploadPostToStorage = async () => {
-    const photo = await uploadPhotoToStorage();
-    console.log(imageSignature, imageLocation, location, photo);
+  const uploadPostToServer = async () => {
     try {
-      const valueObj = {
-        name,
-        uid,
-        imageSignature,
-        imageLocation,
-        photo,
-        commentCounter: 0,
-      };
-      if (location) valueObj.location = location.coords;
-      const docRef = await addDoc(collection(db, 'posts'), valueObj);
-      console.log('Document written with ID: ', docRef.id);
-    } catch (e) {
-      console.error('Error adding document: ', e);
+      const postPhoto = await uploadPhotoToServer();
+      const { title, location, region } = post;
+
+      const date = new Date().toLocaleDateString();
+      const time = new Date()
+        .toLocaleTimeString()
+        .split(":")
+        .splice(0, 2)
+        .join(":");
+      const created = Date.now().toString();
+      await addDoc(collection(fsbase, "posts"), {
+        photo: postPhoto,
+        title,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        country: region.country,
+        city: region.city,
+        userId,
+        login,
+        like: 0,
+        date,
+        time,
+        created,
+        avatarImage,
+        comments: 0,
+      });
+    } catch (error) {
+      console.error("Error adding document: ", error);
     }
   };
 
+  const keyboardHide = () => {
+    setKeyboardVisible(false);
+    Keyboard.dismiss();
+  };
+
+  const onCameraReady = () => {
+    setIsCameraReady(true);
+  };
+
+  const takePicture = async () => {
+    const makePhoto = async () => {
+      let { uri } = await camera.takePictureAsync();
+      return uri;
+    };
+
+    const takeLocation = async () => {
+      return await Location.getCurrentPositionAsync({});
+    };
+
+    const takeRegionData = async (location) => {
+      return await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    };
+
+    try {
+      setLoading(true);
+      const uri = await makePhoto();
+
+      if (location === "granted") {
+        setLoading(false);
+        setloadingText("Taking location...");
+        setLoading(true);
+        const location = await takeLocation();
+        const regionData = await takeRegionData(location);
+
+        setPost((prevState) => ({ ...prevState, region: regionData[0] }));
+        setPost((prevState) => ({
+          ...prevState,
+          location: location.coords,
+        }));
+      }
+
+      setPhoto(uri);
+    } catch (error) {
+      console.log(`takePicture.error`, error);
+    } finally {
+      setLoading(false);
+      setloadingText("Taking photo...");
+    }
+  };
+
+  const submitForm = async () => {
+    try {
+      setloadingText("Submiting your post...");
+      setLoading(true);
+      await uploadPostToServer();
+
+      navigation.navigate("DefaultPostsScreen");
+      setLoading(false);
+      setPhoto(null);
+      setPost(initialState);
+    } catch (error) {
+      console.log(`submitForm.error`, error);
+    } finally {
+      setLoading(false);
+      setloadingText("Taking photo...");
+    }
+  };
+
+  const onDell = () => {
+    setPhoto(null);
+    setPost(initialState);
+    navigation.navigate("DefaultPostsScreen");
+  };
+
+  if (!permission) {
+    // Camera permissions are still loading
+    return null;
+  }
+
+  if (!permission.granted) {
+    // Camera permissions are not granted yet
+    return (
+      <View style={styles.permissionContainer}>
+        <Text style={{ textAlign: "center" }}>
+          We need your permission to show the camera
+        </Text>
+        <Button onPress={requestPermission} title="grant permission" />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView styles={styles.box} backGroundColor="#fff">
-        <View style={styles.container}>
-          {isFocused && (
-            <Camera
-              style={styles.camera}
-              type={type}
-              ref={ref => {
-                setCameraRef(ref);
+    <TouchableWithoutFeedback onPress={keyboardHide}>
+      <View style={{ ...styles.container, width: dimensions + 16 * 2 }}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* <Spinner
+            //visibility of Overlay Loading Spinner
+            size="large"
+            color="orange"
+            visible={loading}
+            //Text with the Spinner
+            textContent={loadingText}
+            //Text style of the Spinner Text
+            textStyle={styles.spinnerTextStyle}
+          /> */}
+          <View style={{ marginBottom: 8, fontSize: 22 }}>
+            {!isKeyboardVisible && (
+              <>
+                {isFocused && (
+                  <>
+                    {!photo ? (
+                      <Camera
+                        skipProcessing={true}
+                        flashMode={flashMode}
+                        type={cameraType}
+                        onCameraReady={onCameraReady}
+                        onMountError={(error) => {
+                          154;
+                          console.log("cammera.error", error);
+                          155;
+                        }}
+                        ratio="1:1"
+                        ref={setCamera}
+                        style={styles.camera}
+                      >
+                        <TouchableOpacity
+                          activeOpacity={0.6}
+                          style={styles.takePhotoBtn}
+                          onPress={takePicture}
+                        >
+                          <FontAwesome name="camera" size={20} color="grey" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          activeOpacity={0.6}
+                          style={styles.changeCameraBtn}
+                          onPress={() =>
+                            setCameraType(
+                              cameraType === CameraType.front
+                                ? CameraType.back
+                                : CameraType.front
+                            )
+                          }
+                        >
+                          <Foundation name="refresh" size={24} color="white" />
+                        </TouchableOpacity>
+                        {cameraType === CameraType.back && (
+                          <TouchableOpacity
+                            activeOpacity={0.6}
+                            style={styles.flashBtn}
+                            onPress={() => {
+                              setFlashMode(
+                                flashMode === FlashMode.on
+                                  ? FlashMode.off
+                                  : FlashMode.on
+                              );
+                            }}
+                          >
+                            <Ionicons
+                              name="flash"
+                              size={24}
+                              color={
+                                flashMode === FlashMode.on ? "blue" : "white"
+                              }
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </Camera>
+                    ) : (
+                      <View style={{ position: "relative" }}>
+                        <ImageBackground
+                          source={{ uri: photo }}
+                          style={styles.imageView}
+                        >
+                          <TouchableOpacity
+                            activeOpacity={0.6}
+                            style={styles.dellPhotoBtn}
+                            onPress={() => {
+                              setPhoto(null);
+                              setPost(initialState);
+                            }}
+                          >
+                            <Foundation name="trash" size={20} color="grey" />
+                          </TouchableOpacity>
+                        </ImageBackground>
+                      </View>
+                    )}
+                  </>
+                )}
+                <View>
+                  <Text style={styles.addTitile}>
+                    {photo ? "Удалить фото" : "Сделать фото"}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : ""}
+          >
+            <View
+              style={{
+                paddingBottom: isKeyboardVisible ? 10 : 0,
               }}
             >
-              {photo && (
-                <View style={styles.takePhotoContainer}>
-                  <Image
-                    source={{ uri: photo }}
-                    style={{ width: 200, height: 200 }}
-                  />
-                </View>
-              )}
+              <View style={{ marginBottom: 16 }}>
+                <TextInput
+                  placeholder="Название..."
+                  value={post.title}
+                  style={styles.input}
+                  textAlign={"left"}
+                  onFocus={() => setKeyboardVisible(true)}
+                  onChangeText={(value) =>
+                    setPost((prevState) => ({ ...prevState, title: value }))
+                  }
+                />
+              </View>
+              <View style={{ marginBottom: 32, position: "relative" }}>
+                {post.region.country !== undefined && (
+                  <Text>
+                    {post.region.country + ","} {post.region.city}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+
+          {!isKeyboardVisible && (
+            <>
               <TouchableOpacity
-                style={styles.flipContainer}
-                onPress={flipCamera}
+                disabled={redyToPost ? false : true}
+                activeOpacity={0.6}
+                style={{
+                  ...styles.subBtn,
+                  backgroundColor: redyToPost ? "#FF6C00" : "#F6F6F6",
+                }}
+                onPress={() => submitForm()}
               >
-                <MaterialCommunityIcons
-                  name="camera-flip-outline"
+                <Text
+                  style={{
+                    ...styles.btnTitle,
+                    color: redyToPost ? "#FFFFFF" : "#BDBDBD",
+                  }}
+                >
+                  Опубликовать
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={redyToDell ? false : true}
+                activeOpacity={0.6}
+                style={{
+                  ...styles.dellBtn,
+                  backgroundColor: redyToDell ? "#FF6C00" : "#F6F6F6",
+                }}
+                onPress={() => onDell()}
+              >
+                <MaterialIcons
+                  name="delete-outline"
                   size={24}
-                  style={{ color: 'white' }}
+                  color={redyToDell ? "#FFFFFF" : "#DADADA"}
                 />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.shootButton} onPress={takePhoto}>
-                <View style={styles.takePhotoOut}>
-                  <View style={styles.takePhotoInner}>
-                    <MaterialCommunityIcons name="camera-outline" size={24} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </Camera>
+            </>
           )}
-          <Pressable onPress={imageDownloaderHandler}>
-            <Text style={styles.text}>Завантажте фото</Text>
-          </Pressable>
-
-          <TextInput
-            value={imageSignature}
-            onChangeText={imageTitleHandler}
-            placeholder="Назва"
-            style={styles.input}
-          />
-          <View position="relative">
-            <Pressable style={styles.mapButton}>
-              <MaterialCommunityIcons
-                name="map-marker-plus-outline"
-                size={24}
-              />
-            </Pressable>
-            <TextInput
-              value={imageLocation}
-              onChangeText={imageLocationHandler}
-              placeholder="Місцевість"
-              style={styles.input}
-            ></TextInput>
-          </View>
-          <Pressable onPress={onSubmit} style={styles.button}>
-            <Text style={styles.buttonText}>Опублікувати</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </View>
+    </TouchableWithoutFeedback>
   );
-};
+}
 
+//styles
 const styles = StyleSheet.create({
   container: {
-    backGroundColor: '#fff',
+    paddingTop: 32,
+    paddingHorizontal: 16,
     flex: 1,
-    paddingLeft: 20,
-    paddingRight: 20,
+    justifyContent: "flex-start",
+    backgroundColor: "#FFFFFF",
   },
   camera: {
-    height: 300,
-    marginTop: 30,
-    borderRadius: 5,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E8E8E8",
+    height: 340,
   },
-  photoView: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'flex-end',
+  takePhotoBtn: {
+    opacity: 0.5,
+    borderRadius: 50,
+    backgroundColor: "#FFFFFF",
+    width: 70,
+    height: 70,
+    alignItems: "center",
+    justifyContent: "center",
   },
-
-  flipContainer: {
-    flex: 0.1,
-    alignSelf: 'flex-end',
-    marginRight: 10,
-    marginTop: 10,
+  changeCameraBtn: {
+    padding: 3,
+    opacity: 0.6,
+    position: "absolute",
+    right: 7,
+    top: 7,
   },
-
-  shootButton: {
-    alignSelf: 'center',
-    top: 200,
+  flashBtn: {
+    padding: 3,
+    opacity: 0.6,
+    position: "absolute",
+    left: 7,
+    top: 7,
   },
-
-  takePhotoContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    borderColor: '#ddd',
-    borderWidth: 3,
-    width: 200,
-    height: 200,
+  imageView: {
+    height: 340,
+    justifyContent: "center",
+    alignItems: "center",
   },
-
-  takePhotoOut: {
-    borderWidth: 2,
-    borderColor: '#ffffff67',
-    height: 50,
-    width: 50,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+  dellPhotoBtn: {
+    opacity: 0.5,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 70,
+    height: 70,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
     borderRadius: 50,
   },
-
-  takePhotoInner: {
-    borderWidth: 2,
-    borderColor: '#ccc',
-    height: 40,
-    width: 40,
-    backgroundColor: '#ffffff80',
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+  addTitile: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+    color: "#BDBDBD",
+    fontFamily: "Roboto-Regular",
+    marginBottom: 30,
   },
-
-  image: {
-    marginLeft: 'auto',
-    marginRight: 'auto',
-    width: 343,
-    height: 240,
-  },
-
-  text: {
-    marginTop: 10,
-    textAlign: 'center',
-  },
-
   input: {
-    paddingLeft: 50,
-    height: 44,
-    padding: 10,
-    backgroundColor: '#E8E8E8',
-    marginTop: 16,
-    borderRadius: 10,
+    paddingBottom: 16,
+    paddingTop: 16,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "400",
+    color: "#BDBDBD",
+    fontFamily: "Roboto-Regular",
+    borderBottomColor: "#E8E8E8",
+    borderBottomWidth: 1,
   },
-  mapButton: {
-    position: 'absolute',
-    top: 28,
-    left: 10,
+  subBtn: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    paddingTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 100,
+    borderWidth: 1,
+    fontFamily: "Roboto-Regular",
+    backgroundColor: "#F6F6F6",
+    ...Platform.select({
+      ios: {
+        borderColor: "#FF6C00",
+        backgroundColor: "transparent",
+      },
+      android: {
+        borderColor: "transparent",
+        backgroundColor: "#F6F6F6",
+      },
+      default: {
+        borderColor: "transparent",
+        backgroundColor: "#F6F6F6",
+      },
+    }),
   },
-  button: {
-    backgroundColor: '#FF6C00',
-    borderRadius: 32,
-    padding: 16,
-    marginVertical: 16,
-    marginTop: 43,
-    justifyContent: 'center',
-  },
-  buttonText: {
+  btnTitle: {
     fontSize: 16,
-    color: 'white',
-    textAlign: 'center',
+    lineHeight: 19,
+    fontFamily: "Roboto-Regular",
+    color: "#BDBDBD",
+    ...Platform.select({
+      ios: {
+        color: "#1B4371",
+      },
+      android: {
+        color: "#BDBDBD",
+      },
+      default: {
+        color: "#BDBDBD",
+      },
+    }),
+  },
+  dellBtn: {
+    marginTop: "auto",
+    padding: 12,
+    width: 70,
+    height: 50,
+    marginRight: "auto",
+    marginLeft: "auto",
+    alignItems: "center",
+    backgroundColor: "#F6F6F6",
+    borderRadius: 20,
+  },
+  spinnerTextStyle: {
+    color: "orange",
   },
 });
-
-export default CreatePostsScreen;
